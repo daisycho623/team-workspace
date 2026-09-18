@@ -452,9 +452,6 @@ footer span:last-child {
   text-decoration: underline;
   font-weight: bold;
 }
-.table td:nth-child(4) {
-  min-width: 280px;
-}
 .table td:nth-child(7) {
   min-width: 280px;
 }
