@@ -257,42 +257,42 @@ tbody tr:hover {
   font-weight: bold;
   white-space: nowrap;
 }
-.배정 {
+.status-assigned {
   background: #d6edba;
   color: #2d5016;
 }
-.진행중 {
+.status-in-progress {
   background: #2054aa;
   color: #fff;
 }
-.내부검수 {
+.status-internal-review {
   background: #fce59c;
   color: #7c6d00;
 }
-.검수요청 {
+.status-review-requested {
   background: #e4cff3;
   color: #6a1b9a;
 }
-.반영대기 {
+.status-pending-release {
   background: #c3e1f7;
   color: #0d47a1;
 }
-.완료 {
+.status-completed {
   background: #e6e6e6;
   color: #424242;
 }
-.이월 {
+.status-carried-over {
   background: #073763;
   color: #fff;
 }
-.보류 {
+.status-on-hold {
   background: #a90000;
   color: #fff;
 }
 .task {
   font-weight: bold;
   color: #17201c;
-  max-width: 300px;
+  max-width: 330px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -452,6 +452,9 @@ footer span:last-child {
   text-decoration: underline;
   font-weight: bold;
 }
+.table td:nth-child(4) {
+  min-width: 280px;
+}
 .table td:nth-child(7) {
   min-width: 280px;
 }
@@ -509,7 +512,7 @@ footer span:last-child {
   margin: 0;
   border: 1px solid transparent;
   border-radius: 7px;
-  padding: 7px 24px 7px 8px;
+  padding: 7px 14px 7px 8px;
   background: #f6f8f6;
   color: #334039;
   font-size: 11px;
@@ -521,35 +524,35 @@ footer span:last-child {
   border-color: #b8dd69;
   box-shadow: 0 0 0 2px #b8dd6940;
 }
-.status-select.진행 {
+.status-select.status-in-progress {
   background: #2054aa;
   color: #fff;
 }
-.status-select.완료 {
+.status-select.status-completed {
   background: #e6e6e6;
   color: #424242;
 }
-.status-select.반영대기 {
+.status-select.status-pending-release {
   background: #c3e1f7;
   color: #0d47a1;
 }
-.status-select.검수요청 {
+.status-select.status-review-requested {
   background: #e4cff3;
   color: #6a1b9a;
 }
-.status-select.내부검수 {
+.status-select.status-internal-review {
   background: #fce59c;
   color: #7c6d00;
 }
-.status-select.보류 {
+.status-select.status-on-hold {
   background: #a90000;
   color: #fff;
 }
-.status-select.이월 {
+.status-select.status-carried-over {
   background: #073763;
   color: #fff;
 }
-.status-select.배정 {
+.status-select.status-assigned {
   background: #d6edba;
   color: #2d5016;
 }
@@ -678,4 +681,105 @@ footer span:last-child {
   border-color: #b8dd69;
   background: #fff;
 }
-.worker-admin{margin-top:28px;padding-top:18px;border-top:1px solid #ffffff18;min-height:0}.worker-admin-title{display:flex;align-items:center;justify-content:space-between;color:#91aca1;font-size:10px;letter-spacing:.5px;margin-bottom:8px}.worker-admin-title button{width:25px;height:25px;margin:0;padding:0;text-align:center;border:1px solid #ffffff24;border-radius:6px;color:#b8dd69;font-size:16px}.worker-admin-item{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;margin:2px 0;border-radius:7px;color:#d7e3de;font-size:11px}.worker-admin-item:hover{background:#ffffff0d}.worker-admin-item button{width:21px;height:21px;margin:0;padding:0;text-align:center;color:#789589;font-size:15px;box-shadow:none}.worker-admin-item button:hover{color:#fff;background:#a90000}.worker-admin form{display:flex;gap:5px;margin-top:8px}.worker-admin form[hidden]{display:none}.worker-admin input{min-width:0;width:100%;border:1px solid #ffffff20;border-radius:6px;background:#ffffff0d;color:#fff;padding:7px;font-size:10px;outline:none}.worker-admin input:focus{border-color:#b8dd69}.worker-admin form button{margin:0;padding:6px 8px;background:#b8dd69;color:#173127;border-radius:6px;font-size:10px;text-align:center}@media(max-width:850px){.worker-admin{display:none}}
+.worker-admin {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px solid #ffffff18;
+  min-height: 0;
+}
+.worker-admin-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #91aca1;
+  font-size: 10px;
+  letter-spacing: 0.5px;
+  margin-bottom: 8px;
+}
+.worker-admin-title button {
+  width: 25px;
+  height: 25px;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  border: 1px solid #ffffff24;
+  border-radius: 6px;
+  color: #b8dd69;
+  font-size: 16px;
+}
+.worker-admin-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 8px;
+  margin: 2px 0;
+  border-radius: 7px;
+  color: #d7e3de;
+  font-size: 11px;
+}
+.worker-admin-item:hover {
+  background: #ffffff0d;
+}
+.worker-admin-item button {
+  width: 21px;
+  height: 21px;
+  margin: 0;
+  padding: 0;
+  text-align: center;
+  color: #789589;
+  font-size: 15px;
+  box-shadow: none;
+}
+.worker-admin-item button:hover {
+  color: #fff;
+  background: #a90000;
+}
+.worker-admin form {
+  display: flex;
+  gap: 5px;
+  margin-top: 8px;
+}
+.worker-admin form[hidden] {
+  display: none;
+}
+.worker-admin input {
+  min-width: 0;
+  width: 100%;
+  border: 1px solid #ffffff20;
+  border-radius: 6px;
+  background: #ffffff0d;
+  color: #fff;
+  padding: 7px;
+  font-size: 10px;
+  outline: none;
+}
+.worker-admin input:focus {
+  border-color: #b8dd69;
+}
+.worker-admin form button {
+  margin: 0;
+  padding: 6px 8px;
+  background: #b8dd69;
+  color: #173127;
+  border-radius: 6px;
+  font-size: 10px;
+  text-align: center;
+}
+@media (max-width: 850px) {
+  .worker-admin {
+    display: none;
+  }
+}
+
+/* Use the same typography for native form controls and editable table cells. */
+.table input,
+.table select,
+.table textarea,
+.table [contenteditable] {
+  font-family: Pretendard, "Noto Sans KR", system-ui, sans-serif;
+  font-size: 11px;
+  line-height: 1.5;
+}
+.table input[type="date"]::-webkit-datetime-edit {
+  font: inherit;
+}
