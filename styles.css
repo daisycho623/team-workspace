@@ -141,6 +141,8 @@ header > i {
 }
 main > section {
   padding: 36px 42px;
+  margin: 0 auto;
+  max-width: 1440px;
 }
 .intro {
   display: flex;
@@ -428,6 +430,7 @@ footer span:last-child {
 .locked {
   background: #fafbfa !important;
   color: #89928d;
+  text-align: center;
 }
 .editable {
   cursor: text;
@@ -454,6 +457,7 @@ footer span:last-child {
 }
 .table td:nth-child(8),
 .table td:nth-child(9) {
+  text-align: center;
   min-width: 80px;
 }
 @keyframes saved {
