@@ -163,34 +163,8 @@ main > section {
   font-size: 12px;
   font-weight: bold;
 }
-.stats {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 14px;
-  margin: 25px 0;
-}
-.stat {
-  background: #fff;
-  border: 1px solid var(--line);
-  border-radius: 14px;
-  padding: 20px;
-}
-.stat label {
-  color: #727d77;
-  font-size: 12px;
-  font-weight: bold;
-}
-.stat b {
-  display: block;
-  margin-top: 16px;
-  font-size: 28px;
-}
-.stat b small {
-  font-size: 11px;
-  color: #8c968f;
-  margin-left: 6px;
-}
 .panel {
+  margin-top: 25px;
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 15px;
@@ -388,9 +362,6 @@ footer span:last-child {
   aside button:first-letter {
     font-size: 20px;
   }
-  .stats {
-    grid-template-columns: 1fr 1fr;
-  }
   #people {
     grid-template-columns: 1fr 1fr;
   }
@@ -432,12 +403,6 @@ footer span:last-child {
   .tools select {
     width: 50%;
     margin: 0 5px 0 0;
-  }
-  .stats {
-    gap: 8px;
-  }
-  .stat {
-    padding: 14px;
   }
   #people {
     grid-template-columns: 1fr;
