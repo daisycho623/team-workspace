@@ -14,6 +14,20 @@ function app(handler){
   return {ready,requests,element,run:code=>vm.runInContext(code,context)};
 }
 const task=['9/19','123','작업자 A','배정','2026-09-20','업무 제목','메모','1.5','0'];
+test('new tasks stay below existing tasks after consecutive saves and reload',async()=>{
+  let tasks=[task];
+  const page=app(p=>{if(p.action==='save'){tasks=p.tasks;return {ok:true}}return {ok:true,tasks}});
+  await page.ready;
+  for(const title of ['새 업무 1','새 업무 2']){
+    page.run('addRow()');
+    page.run("remember(data.length-1,2,'작업자 A')");
+    page.run('remember(data.length-1,5,'+JSON.stringify(title)+')');
+    await page.run('saveAll()');
+  }
+  assert.deepEqual(tasks.map(row=>row[5]),['업무 제목','새 업무 1','새 업무 2']);
+  await page.run('load()');
+  assert.equal(page.run('data[2][5]'),'새 업무 2');
+});
 test('load uses Apps Script tasks and maps nine columns without losing work hours',async()=>{
   const page=app(()=>({ok:true,tasks:[task],updatedAt:'2026-09-19T00:00:00Z',holidayError:'key missing'}));await page.ready;
   assert.equal(page.requests[0].payload.action,'load');assert.equal(page.run('data[0][9]'),'1.5');
