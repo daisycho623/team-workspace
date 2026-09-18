@@ -1,103 +1,65 @@
 const statusClasses={"배정":"status-assigned","진행":"status-in-progress","진행중":"status-in-progress","내부검수":"status-internal-review","검수요청":"status-review-requested","반영대기":"status-pending-release","완료":"status-completed","이월":"status-carried-over","보류":"status-on-hold"};
 const statusClass=value=>Object.hasOwn(statusClasses,value)?statusClasses[value]:'';
 const ID='1QEgjN6IXs473j1oNuTt-5WM39CcihQNHfUN7Piyp6WI',statuses=['배정','진행','내부검수','검수요청','반영대기','완료','이월','보류'],KEY='cx-workflow-edits-v5';
-let workers=[];
-let editPrefix='';
+let workers=[...(window.WORKERS||[])];
+let editPrefix='',serverConnected=false;
+let saving=false;
 let data=[],newRows=new Set(),deleteMode=false,edits=JSON.parse(localStorage.getItem(KEY)||'{}');const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],esc=v=>String(v??'').replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
 const nowText=()=>{let d=new Date(),p=n=>String(n).padStart(2,'0');return `${p(d.getFullYear()%100)}.${p(d.getMonth()+1)}.${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`};
-function normalize(r){let a=[...r];if(a.length>=13){a.splice(3,1);a.splice(9,1)}a=Array.from({length:11},(_,i)=>a[i]??'');if(a[3]==='진행중')a[3]='진행';return a}
-function renderWorkerAdmin(){const box=$('#workerAdminList');if(!box)return;box.innerHTML=workers.map(name=>`<div class="worker-admin-item"><span>${esc(name)}</span></div>`).join('')}
-let requestId=0,loading=false;
-function loadJSONP(makeURL){
-  return new Promise((resolve,reject)=>{
-    const callback='__cxResponse_'+Date.now()+'_'+(++requestId),script=document.createElement('script');
-    let settled=false;
-    const timer=setTimeout(()=>finish(new Error('서버 응답 시간 초과'),undefined,true),10000);
-    function finish(error,value,timedOut=false){
-      if(settled)return;
-      settled=true;
-      clearTimeout(timer);
-      // Removing a script does not cancel an already downloaded JSONP response.
-      if(timedOut)window[callback]=()=>{delete window[callback]};
-      else delete window[callback];
-      script.remove();
-      error?reject(error):resolve(value);
-    }
-    window[callback]=value=>finish(null,value);
-    script.onerror=()=>finish(new Error('서버 연결 실패'));
-    try{script.src=makeURL(callback);document.head.appendChild(script)}catch(error){finish(error)}
-  });
+function normalize(row){
+  if(!Array.isArray(row)||![9,11].includes(row.length)||row.some(v=>v!==null&&!['string','number','boolean'].includes(typeof v)))throw new Error('업무 데이터는 9개 열의 배열이어야 합니다.');
+  const values=row.map(v=>String(v??''));
+  if(values.length===9)values.splice(7,0,'','');
+  return values;
 }
-async function loadSheet(sheet){
-  const result=await loadJSONP(callback=>{
-    const url=new URL('https://docs.google.com/spreadsheets/d/'+ID+'/gviz/tq');
-    url.search=new URLSearchParams({sheet,headers:'0',tqx:'out:json;responseHandler:'+callback,cache:String(Date.now())});
-    return url.href;
-  });
-  if(result?.status!=='ok'||!Array.isArray(result.table?.rows))throw new Error('시트 응답을 확인해 주세요.');
-  return result.table.rows.map(r=>(r.c||[]).map(c=>c?.f??c?.v??'')).filter(r=>r.some(v=>String(v).trim()));
+function renderWorkerAdmin(){const box=$('#workerAdminList');if(box)box.innerHTML=workers.map(name=>`<div class="worker-admin-item"><span>${esc(name)}</span></div>`).join('')}
+let loading=false;
+async function requestServer(payload){
+  if(!window.APPS_SCRIPT_URL)throw new Error('config.js에 Apps Script 웹 앱 URL을 설정해 주세요.');
+  const response=await fetch(window.APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload),signal:AbortSignal.timeout(30000)});
+  if(!response.ok)throw new Error('서버 응답 오류 (HTTP '+response.status+')');
+  let result;
+  try{result=await response.json()}catch{throw new Error('서버가 JSON을 반환하지 않습니다. 웹 앱 배포와 접근 권한을 확인해 주세요.')}
+  if(!result?.ok)throw new Error(result?.error||result?.message||'Apps Script 요청에 실패했습니다.');
+  return result;
 }
-const workerNames=names=>[...new Set(names.map(name=>String(name??'').trim()).filter(Boolean))];
-async function loadWorkers(){
-  try{
-    if(!window.APPS_SCRIPT_URL)throw new Error('작업자 API URL 없음');
-    const result=await loadJSONP(callback=>{
-      const url=new URL(window.APPS_SCRIPT_URL);
-      url.searchParams.set('action','getWorkers');
-      url.searchParams.set('callback',callback);
-      url.searchParams.set('cache',String(Date.now()));
-      return url.href;
-    });
-    if(!result?.ok||!Array.isArray(result.workers))throw new Error('작업자 API 응답 오류');
-    return workerNames(result.workers);
-  }catch(error){
-    const rows=await loadSheet('작업자');
-    return workerNames(rows.map(r=>r[0]).filter((name,i)=>i!==0||String(name).trim()!=='작업자'));
-  }
-}
+function lockControls(busy){['newTask','refresh','resetEdits','saveAll','deleteToggle','deleteSelected'].forEach(id=>{const el=$('#'+id);if(el)el.disabled=busy});$('#rows').inert=busy}
 async function load(){
-  if(loading)return;
-  loading=true;
-  ['newTask','refresh','resetEdits'].forEach(id=>$('#'+id).disabled=true);
-  $('#sync').textContent='시트 연결 중…';
-  $('#updated').textContent='서버 데이터를 불러오는 중…';
+  if(loading||saving)return;
+  loading=true;lockControls(true);serverConnected=false;
+  $('#sync').textContent='Apps Script 연결 중…';
   try{
-    let server=null;
-    if(window.SERVER_DATA_URL&&window.location?.protocol!=='file:'){
-      const response=await fetch(window.SERVER_DATA_URL,{cache:'no-store',signal:AbortSignal.timeout(10000)});
-      if(response.status!==404){
-        if(!response.ok)throw new Error('서버 저장소 조회 실패');
-        server=await response.json();
-        if(!server?.ok||!Array.isArray(server.rows)||!Array.isArray(server.workers))throw new Error('서버 데이터 응답 오류');
-      }
-    }
-    const [sheetResult,workerResult]=server
-      ?[{status:'fulfilled',value:server.rows},{status:'fulfilled',value:server.workers}]
-      :await Promise.allSettled([loadSheet('CX'),loadWorkers()]);
-    const live=sheetResult.status==='fulfilled';
-    if(live){
-      editPrefix=server?'server:'+server.source.sha256+':':'';
-      data=sheetResult.value.map(normalize).filter(r=>!(r[2]==='작업자'&&['단계','상태'].includes(r[3])));
-      data=data.map((r,i)=>Array.from({length:11},(_,c)=>edits[editPrefix+i+':'+c]??r[c]??''));
-      newRows.clear();
-    }else console.error('sheet load failed',sheetResult.reason);
-    if(workerResult.status==='fulfilled')workers=workerResult.value;
-    else console.error('worker load failed',workerResult.reason);
-    workers=workerNames([...workers,...data.map(r=>r[2])]);
-    renderWorkerAdmin();
-    $('#sync').textContent=server?'서버 저장 데이터 연결됨':live?(workerResult.status==='fulfilled'?'실시간 연결됨':'시트 연결됨 · 작업자 목록 연결 실패'):'시트 데이터를 불러오지 못함';
-    const message=server?'서버 저장 데이터 · 시트 가져온 시각 '+new Date(server.importedAt).toLocaleString('ko-KR'):live?(data.length?'Google Sheets':'Google Sheets · 등록된 업무가 없습니다'):'연결 실패 · 시트 공유 설정과 네트워크를 확인한 뒤 새로고침해 주세요';
-    $('#updated').textContent=new Intl.DateTimeFormat('ko-KR',{dateStyle:'long',timeStyle:'short'}).format(new Date())+' 기준 · '+message;
-    $('#saveStatus').textContent=window.APPS_SCRIPT_URL?'● Apps Script 저장 준비됨':'● Apps Script URL 필요';
-    filters();render();
+    const result=await requestServer({action:'load'});
+    if(!Array.isArray(result.tasks))throw new Error('load 응답에 tasks가 없습니다. 제공하신 Apps Script 코드를 새 버전으로 배포해 주세요.');
+    const rows=result.tasks.map(normalize);
+    data=rows;newRows.clear();edits={};deleteMode=false;
+    $('#deleteSelected').hidden=true;$('#deleteToggle').textContent='선택 삭제';
+    workers=[...new Set([...(window.WORKERS||[]),...(Array.isArray(result.workers)?result.workers:[]),...data.map(r=>r[2])].filter(Boolean))];
+    serverConnected=true;renderWorkerAdmin();filters();render();
+    $('#sync').textContent='Apps Script 연결됨';
+    $('#updated').textContent=result.updatedAt?'서버 최종 저장: '+result.updatedAt:(data.length?'서버 업무를 불러왔습니다.':'등록된 업무가 없습니다.');
+    $('#saveStatus').textContent='● 서버 저장 준비됨';
+
   }catch(error){
-    console.error('server load failed',error);
-    $('#sync').textContent='서버 데이터 연결 실패';
-    $('#updated').textContent='서버 연결을 확인한 뒤 새로고침해 주세요. 기존 화면 데이터는 유지됩니다.';
-  }finally{
-    loading=false;
-    ['newTask','refresh','resetEdits'].forEach(id=>$('#'+id).disabled=false);
-  }
+    $('#sync').textContent='Apps Script 연결 실패';
+    $('#updated').textContent=error.message;
+    $('#saveStatus').textContent='● 조회 성공 후 저장할 수 있습니다';
+  }finally{loading=false;lockControls(false);$('#saveAll').disabled=!serverConnected}
+}
+async function saveAll(){
+  if(loading||saving)return;
+  if(!serverConnected){alert('서버 데이터를 먼저 불러와 주세요.');return}
+  if(data.some(r=>!r[2].trim()||!r[5].trim())){alert('모든 업무의 작업자와 업무제목을 입력해 주세요.');return}
+  saving=true;lockControls(true);$('#saveStatus').textContent='● 저장 중…';
+  const tasks=data.map(row=>[0,1,2,3,4,5,6,9,10].map(c=>row[c]??''));
+  try{
+    const result=await requestServer({action:'save',tasks});
+    newRows.clear();edits={};localStorage.removeItem(KEY);
+    $('#saveStatus').textContent='● Apps Script 저장 완료';
+    $('#updated').textContent=result.updatedAt?'서버 최종 저장: '+result.updatedAt:'서버에 저장했습니다.';
+    render();
+  }catch(error){$('#saveStatus').textContent='● 저장 실패: '+error.message}
+  finally{saving=false;lockControls(false)}
 }
 function filters(){$('#worker').innerHTML='<option value="all">전체 작업자</option>'+workers.map(x=>`<option>${esc(x)}</option>`).join('');$('#status').innerHTML='<option value="all">전체 단계</option>'+statuses.map(x=>`<option>${esc(x)}</option>`).join('')}
 function selected(){let q=$('#search').value.toLowerCase(),w=$('#worker').value,s=$('#status').value;return data.map((r,i)=>({r,i})).filter(x=>(!q||x.r.join(' ').toLowerCase().includes(q))&&(w==='all'||x.r[2]===w)&&(s==='all'||x.r[3]===s))}
@@ -105,17 +67,18 @@ function cell(v,r,c,cl=''){return `<td class="editable ${cl}" contenteditable="t
 function rmsCell(v,r){let num=String(v||'').replace(/\D/g,'');return `<td class="rms-cell"><input class="rms-input" data-row="${r}" value="${esc(v)}" inputmode="numeric">${num?`<a href="http://kms-redmine.medialog.co.kr/redmine/issues/${num}" target="_blank" rel="noopener">↗</a>`:''}</td>`}
 function dateValue(v){let m=String(v||'').trim().match(/^(?:(\d{4})[.\/-])?(\d{1,2})[.\/-](\d{1,2})$/);return m?`${m[1]||new Date().getFullYear()}-${String(m[2]).padStart(2,'0')}-${String(m[3]).padStart(2,'0')}`:''}
 function dateCell(v,r){return `<td class="date-cell"><input type="date" class="date-input" aria-label="완료 및 반영일" data-row="${r}" value="${dateValue(v)}"></td>`}function selectCell(v,r,c,items,type){return `<td class="select-cell"><select class="cell-select ${type} ${type==='status-select'?statusClass(v):''}" data-row="${r}" data-col="${c}">${items.map(x=>`<option ${x===v?'selected':''}>${esc(x)}</option>`).join('')}</select></td>`}
-function render(){let a=selected();$('#rows').innerHTML=a.map(({r,i})=>`<tr class="${newRows.has(i)?'new-row':''}"><td class="locked">${deleteMode?`<input class="row-check" type="checkbox" data-check="${i}" aria-label="행 선택">`:newRows.has(i)?`<button class="save-row" data-save="${i}">시트에 저장</button>`:esc(r[0])}</td>${rmsCell(r[1],i)}${selectCell(r[2],i,2,['',...workers],'worker-select')}${selectCell(r[3],i,3,statuses,'status-select')}${dateCell(r[4],i)}${cell(r[5],i,5,'task')}${cell(r[6],i,6)}${cell(r[9],i,9)}${cell(r[10],i,10)}</tr>`).join('');$('#count').textContent=`총 ${a.length}개의 업무`;people(a.map(x=>x.r));bind();$$('[data-save]').forEach(b=>b.onclick=()=>saveRow(+b.dataset.save,b))}
-function remember(r,c,v){data[r][c]=v;if(!newRows.has(r)){edits[`${editPrefix}${r}:${c}`]=v;localStorage.setItem(KEY,JSON.stringify(edits))}}
+function render(){let a=selected();$('#rows').innerHTML=a.map(({r,i})=>`<tr class="${newRows.has(i)?'new-row':''}"><td class="locked">${deleteMode?`<input class="row-check" type="checkbox" data-check="${i}" aria-label="행 선택">`:newRows.has(i)?`<button class="save-row" data-save="${i}">${serverConnected?'서버에 저장':'시트에 저장'}</button>`:esc(r[0])}</td>${rmsCell(r[1],i)}${selectCell(r[2],i,2,['',...workers],'worker-select')}${selectCell(r[3],i,3,statuses,'status-select')}${dateCell(r[4],i)}${cell(r[5],i,5,'task')}${cell(r[6],i,6)}${cell(r[9],i,9)}${cell(r[10],i,10)}</tr>`).join('');$('#count').textContent=`총 ${a.length}개의 업무`;people(a.map(x=>x.r));bind();$$('[data-save]').forEach(b=>b.onclick=()=>saveRow(+b.dataset.save,b))}
+function remember(r,c,v){data[r][c]=v;$('#saveStatus').textContent='● 변경사항 저장 필요';if(!newRows.has(r)){edits[`${editPrefix}${r}:${c}`]=v;localStorage.setItem(KEY,JSON.stringify(edits))}}
 function bind(){$$('.rms-input').forEach(x=>x.onchange=()=>{remember(+x.dataset.row,1,x.value.trim());render()});$$('.date-input').forEach(x=>x.onchange=()=>remember(+x.dataset.row,4,x.value));$$('#rows [contenteditable]').forEach(x=>{x.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();x.blur()}};x.onfocus=()=>x.dataset.old=x.textContent;x.onblur=()=>{let v=x.textContent.trim(),r=+x.dataset.row,c=+x.dataset.col;if(v!==x.dataset.old){remember(r,c,v);x.classList.add('saved');setTimeout(()=>x.classList.remove('saved'),700)}}});$$('.cell-select').forEach(x=>x.onchange=()=>{let r=+x.dataset.row,c=+x.dataset.col,v=x.value;remember(r,c,v);if(c===3&&v==='진행'&&!data[r][7])remember(r,7,nowText());if(c===3&&v==='완료')remember(r,8,nowText());render()})}
 function addRow(){let d=new Date();data.unshift([`${d.getMonth()+1}/${d.getDate()}`,'','','배정','','','','','','','','']);newRows=new Set([...newRows].map(i=>i+1));newRows.add(0);$('#search').value='';$('#worker').value='all';$('#status').value='all';render();requestAnimationFrame(()=>$('#rows tr:first-child .worker-select')?.focus())}
-async function saveRow(i,b){if(!window.APPS_SCRIPT_URL){alert('Apps Script URL을 확인해 주세요.');return}if(!data[i][2]||!data[i][5]){alert('작업자와 업무제목을 입력해 주세요.');return}b.disabled=true;b.textContent='저장 중…';try{await fetch(window.APPS_SCRIPT_URL,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify({action:'appendTask',values:data[i]})});newRows.delete(i);$('#saveStatus').textContent='● Google Sheets 저장 완료';render()}catch(e){b.disabled=false;b.textContent='다시 저장';$('#saveStatus').textContent='● 저장 실패';alert('저장에 실패했습니다.')}}
+async function saveRow(){await saveAll()}
 function monthOf(v){let m=String(v).match(/(?:\d{2,4}[.\/-])?(\d{1,2})[.\/-]\d{1,2}/);return m?`${+m[1]}월`:'기타'}
 function people(rows){$('#people').innerHTML=workers.map(n=>{let own=rows.filter(r=>r[2]===n);if(!own.length)return '';let total=own.reduce((s,r)=>s+(+r[9]||0),0),months={};own.forEach(r=>(months[monthOf(r[0])]??=[]).push(r));let groups=Object.entries(months).map(([m,list])=>`<div class="person-month"><div class="month-row">${m}</div>${list.map(r=>`<div class="person-task"><span>${esc(r[0])}</span><span class="rms">${esc(r[1])}</span><span><b class="mini-status ${statusClass(r[3])}">${esc(r[3])}</b></span><span>${esc(r[4])}</span><strong>${esc(r[5])}</strong><span>${esc(r[9]||'')}</span></div>`).join('')}</div>`).join('');return `<section class="person-section"><div class="person-header"><b>${esc(n)}</b><strong>${total}</strong></div>${groups}</section>`}).join('')}
-function deleteSelected(){let ids=$$('.row-check:checked').map(x=>+x.dataset.check);if(!ids.length){alert('삭제할 업무를 선택해 주세요.');return}if(!confirm(`${ids.length}개의 업무를 화면에서 삭제하시겠습니까?`))return;ids.sort((a,b)=>b-a).forEach(i=>data.splice(i,1));newRows.clear();deleteMode=false;$('#deleteSelected').hidden=true;$('#deleteToggle').textContent='선택 삭제';$('#saveStatus').textContent='● 선택 업무를 화면에서 삭제했습니다';render()}
+function deleteSelected(){let ids=$$('.row-check:checked').map(x=>+x.dataset.check);if(!ids.length){alert('삭제할 업무를 선택해 주세요.');return}if(!confirm(`${ids.length}개의 업무를 목록에서 제외하시겠습니까? 변경사항 저장 시 서버에 반영됩니다.`))return;ids.sort((a,b)=>b-a).forEach(i=>data.splice(i,1));newRows.clear();deleteMode=false;$('#deleteSelected').hidden=true;$('#deleteToggle').textContent='선택 삭제';$('#saveStatus').textContent='● 삭제를 반영하려면 변경사항 저장을 눌러 주세요';render()}
 $$('[data-tab],aside [data-view]').forEach(b=>b.onclick=()=>{let v=b.dataset.tab||b.dataset.view;$$('[data-tab]').forEach(x=>x.classList.toggle('active',x.dataset.tab===v));$$('aside [data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));$('#list').hidden=v==='people';$('#people').hidden=v!=='people'});
 ['search','worker','status'].forEach(x=>$('#'+x).addEventListener(x==='search'?'input':'change',render));
 $('#newTask').onclick=addRow;
+$('#saveAll').onclick=saveAll;
 $('#deleteToggle').onclick=()=>{deleteMode=!deleteMode;$('#deleteSelected').hidden=!deleteMode;$('#deleteToggle').textContent=deleteMode?'삭제 취소':'선택 삭제';render()};
 $('#deleteSelected').onclick=deleteSelected;
 $('#refresh').onclick=load;
