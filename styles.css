@@ -12,7 +12,8 @@ body {
   margin: 0;
   background: var(--bg);
   color: #17201c;
-  font: 14px Arial, "Noto Sans KR", sans-serif;
+  font-family: Pretendard, "Noto Sans KR", system-ui, sans-serif;
+  font-size: 14px;
 }
 .shell {
   min-height: 100vh;
@@ -453,9 +454,6 @@ footer span:last-child {
 }
 .table td:nth-child(8),
 .table td:nth-child(9) {
-  min-width: 114px;
-}
-.table td:nth-child(10) {
   min-width: 80px;
 }
 @keyframes saved {

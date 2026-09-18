@@ -1,6 +1,7 @@
 const http = require('node:http');
 const fs = require('node:fs/promises');
 const path = require('node:path');
+const { storePath } = require('./cx-store.cjs');
 
 const files = {
   '/': ['index.html', 'text/html; charset=utf-8'],
@@ -15,7 +16,21 @@ const server = http.createServer(async (req, res) => {
     res.writeHead(405, { Allow: 'GET, HEAD' }).end();
     return;
   }
-  const file = files[new URL(req.url, 'http://localhost').pathname];
+  const pathname = new URL(req.url, 'http://localhost').pathname;
+  if (pathname === '/api/tasks') {
+    try {
+      const snapshot = JSON.parse(await fs.readFile(storePath, 'utf8'));
+      const body = JSON.stringify({ ok: true, importedAt: snapshot.importedAt,
+        source: snapshot.source, rows: snapshot.tasks.map(task => task.values), workers: snapshot.workers });
+      res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' });
+      res.end(req.method === 'HEAD' ? undefined : body);
+    } catch (error) {
+      res.writeHead(error.code === 'ENOENT' ? 404 : 500, { 'Content-Type': 'application/json; charset=utf-8' });
+      res.end(JSON.stringify({ ok: false, error: '저장된 CX 데이터를 읽을 수 없습니다.' }));
+    }
+    return;
+  }
+  const file = Object.hasOwn(files, pathname) ? files[pathname] : null;
   if (!file) {
     res.writeHead(404).end('Not found');
     return;

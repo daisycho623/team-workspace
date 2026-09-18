@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const source = fs.readFileSync(require('node:path').join(__dirname, '../app.js'), 'utf8');
 const sheet = rows => ({ status: 'ok', table: { rows: rows.map(row => ({ c: row.map(v => ({ v })) })) } });
 
-function app(respond) {
+function app(respond, serverResponse) {
   const elements = new Map(), requests = [], scripts = new Set(), timers = new Set();
   const element = selector => {
     // The removed stats container must never be accessed during rendering.
@@ -18,8 +18,9 @@ function app(respond) {
     return elements.get(selector);
   };
   const window = { APPS_SCRIPT_URL: 'https://example.test/exec' };
+  if (serverResponse) window.SERVER_DATA_URL = '/api/tasks';
   const context = vm.createContext({
-    window, URL, URLSearchParams, console: { error() {} },
+    window, URL, URLSearchParams, AbortSignal, fetch: async () => serverResponse, console: { error() {} },
     setTimeout(fn) { const timer = { fn }; timers.add(timer); return timer; },
     clearTimeout(timer) { timers.delete(timer); },
     localStorage: { getItem: () => null, removeItem() {}, setItem() {} },
@@ -112,4 +113,30 @@ test('worker names containing HTML characters remain text in options', async () 
   page.run('addRow()');
   assert.match(page.element('#rows').innerHTML, /A &lt;B&gt; &amp; C/);
   assert.doesNotMatch(page.element('#rows').innerHTML, /A <B>/);
+});
+
+test('stored server data loads without contacting Google and always uses date inputs', async () => {
+  const page = app(() => { throw new Error('Unexpected Google request'); }, {
+    ok: true, status: 200, json: async () => ({ ok: true, source: { sha256: 'test' }, importedAt: '2026-09-18T00:00:00Z',
+      rows: [['1/21', '', '작업자 A', '진행', '매주', '서버 업무', '', '', '', '14.125', '']], workers: ['작업자 A'] }),
+  });
+  await page.ready;
+  assert.equal(page.requests.length, 0);
+  assert.equal(page.element('#sync').textContent, '서버 저장 데이터 연결됨');
+  assert.match(page.element('#rows').innerHTML, /서버 업무/);
+  assert.match(page.element('#rows').innerHTML, /type="date" class="date-input"/);
+  assert.equal(page.run('data[0][4]'), '매주');
+  assert.doesNotMatch(page.element('#rows').innerHTML, /data-col="[78]"/);
+  page.run("remember(0,5,'로컬 수정')");
+  assert.equal(page.run("edits['server:test:0:5']"), '로컬 수정');
+});
+
+test('missing storage API falls back to Sheets; server failures are reported', async () => {
+  const page = app(target => target === 'CX' ? sheet([]) : { ok: true, workers: [] }, { status: 404 });
+  await page.ready;
+  assert.equal(page.element('#sync').textContent, '실시간 연결됨');
+  const failed = app(() => { throw new Error('Unexpected fallback'); }, { ok: false, status: 500 });
+  await failed.ready;
+  assert.equal(failed.element('#sync').textContent, '서버 데이터 연결 실패');
+  assert.equal(failed.element('#newTask').disabled, false);
 });
