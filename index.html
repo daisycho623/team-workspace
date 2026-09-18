@@ -1,1 +1,101 @@
-<!doctype html><html lang="ko"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>CX 업무 관리</title><link rel="stylesheet" href="styles.css"></head><body><div class="shell"><aside><h2>▥ WORK<span>FLOW</span></h2><small>WORKSPACE</small><button class="active" data-view="list">▦ 전체 업무</button><button data-view="people">▣ 개인별 보기</button><div class="worker-admin"><div class="worker-admin-title"><b>작업자 관리</b><button id="showWorkerForm" title="작업자 추가">＋</button></div><div id="workerAdminList"></div><form id="workerForm" hidden><input id="workerName" maxlength="20" placeholder="이름 입력"><button>추가</button></form></div><div class="sync"><b>↻ Google Sheets</b><em id="sync">연결 확인 중</em></div><a target="_blank" href="https://docs.google.com/spreadsheets/d/1QEgjN6IXs473j1oNuTt-5WM39CcihQNHfUN7Piyp6WI/edit?usp=sharing">원본 시트 열기 ↗</a></aside><main><header><div><small>CX OPERATIONS</small><h1>업무 관리</h1></div><label>⌕ <input id="search" placeholder="업무명, 작업자, RMS 검색"></label><button id="refresh">↻</button><i>CX</i></header><section><div class="intro"><div><h2>오늘의 업무 현황</h2><p id="updated"></p></div><button id="newTask">＋ 새 업무</button></div><div class="stats" id="stats"></div><article class="panel"><div class="tools"><div><button class="active" data-tab="list">리스트</button><button data-tab="people">작업자별</button></div><span><select id="worker"><option value="all">전체 작업자</option></select><select id="status"><option value="all">전체 단계</option></select></span></div><div id="editHint">작업자와 단계는 드롭다운으로 선택할 수 있습니다. <button id="resetEdits">수정 초기화</button><button id="deleteToggle">선택 삭제</button><button id="deleteSelected" hidden>선택 항목 삭제</button></div><div id="list" class="table"><table><thead><tr><th>등록</th><th>RMS</th><th>작업자</th><th>단계</th><th>완료 &amp; 반영일</th><th>업무제목</th><th>비고</th><th>업무 시작 시간</th><th>업무 종료 시간</th><th>실 작업시간</th><th>조정</th></tr></thead><tbody id="rows"></tbody></table></div><div id="people" hidden></div><footer><span id="count"></span><span id="saveStatus">● Apps Script 연결 대기</span></footer></article></section></main></div><script src="config.js"></script><script src="app.js"></script></body></html>
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>CX 업무 관리</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside>
+        <h2>▥ WORK<span>FLOW</span></h2>
+        <small>WORKSPACE</small
+        ><button class="active" data-view="list">▦ 전체 업무</button
+        ><button data-view="people">▣ 개인별 보기</button>
+        <div class="worker-admin">
+          <div class="worker-admin-title"><b>작업자 목록</b></div>
+          <div id="workerAdminList"></div>
+        </div>
+        <div class="sync">
+          <b>↻ Google Sheets</b><em id="sync">연결 확인 중</em>
+        </div>
+        <a
+          target="_blank"
+          href="https://docs.google.com/spreadsheets/d/1QEgjN6IXs473j1oNuTt-5WM39CcihQNHfUN7Piyp6WI/edit?usp=sharing"
+          >원본 시트 열기 ↗</a
+        >
+      </aside>
+      <main>
+        <header>
+          <div>
+            <small>CX OPERATIONS</small>
+            <h1>업무 관리</h1>
+          </div>
+          <label
+            >⌕
+            <input id="search" placeholder="업무명, 작업자, RMS 검색" /></label
+          ><button id="refresh">↻</button><i>CX</i>
+        </header>
+        <section>
+          <div class="intro">
+            <div>
+              <h2>오늘의 업무 현황</h2>
+              <p id="updated"></p>
+            </div>
+            <button id="newTask">＋ 새 업무</button>
+          </div>
+          <div class="stats" id="stats"></div>
+          <article class="panel">
+            <div class="tools">
+              <div>
+                <button class="active" data-tab="list">리스트</button
+                ><button data-tab="people">작업자별</button>
+              </div>
+              <span
+                ><select id="worker">
+                  <option value="all">전체 작업자</option></select
+                ><select id="status">
+                  <option value="all">전체 단계</option>
+                </select></span
+              >
+            </div>
+            <div id="editHint">
+              작업자와 단계는 드롭다운으로 선택할 수 있습니다.
+              <button id="resetEdits">수정 초기화</button
+              ><button id="deleteToggle">선택 삭제</button
+              ><button id="deleteSelected" hidden>선택 항목 삭제</button>
+            </div>
+            <div id="list" class="table">
+              <table>
+                <thead>
+                  <tr>
+                    <th>등록</th>
+                    <th>RMS</th>
+                    <th>작업자</th>
+                    <th>단계</th>
+                    <th>완료 &amp; 반영일</th>
+                    <th>업무제목</th>
+                    <th>비고</th>
+                    <th>업무 시작 시간</th>
+                    <th>업무 종료 시간</th>
+                    <th>실 작업시간</th>
+                    <th>조정</th>
+                  </tr>
+                </thead>
+                <tbody id="rows"></tbody>
+              </table>
+            </div>
+            <div id="people" hidden></div>
+            <footer>
+              <span id="count"></span
+              ><span id="saveStatus">● Apps Script 연결 대기</span>
+            </footer>
+          </article>
+        </section>
+      </main>
+    </div>
+    <script src="config.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
