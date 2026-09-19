@@ -8,7 +8,7 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"
     />
-    <link rel="stylesheet" href="styles.css?v=20260919-7" />
+    <link rel="stylesheet" href="styles.css?v=20260919-16" />
   </head>
   <body>
     <div class="shell">
@@ -34,66 +34,63 @@
           <label
             >⌕
             <input id="search" placeholder="업무명, 작업자, RMS 검색" /></label
-          ><button id="refresh">↻</button><i>CX</i>
+          ><button id="refresh" type="button" aria-label="서버에서 최신 업무 불러오기" title="서버에서 최신 업무 불러오기">↻</button><i>CX</i>
         </header>
         <section>
-          <div class="intro">
-            <div>
-              <h2>CX 업무 관리</h2>
-              <p id="updated"></p>
-            </div>
-            <div id="editHint" class="task-actions">
-              <button id="newTask">＋ 새 업무</button>
-              <button id="deleteToggle">삭제</button>
-              <button id="saveAll" disabled>저장</button>
-              <button id="reorderToggle" aria-pressed="false">↕ 순서 변경</button>
-            </div>
-          </div>
           <article class="panel">
+            <div class="panel-toolbar">
+              <div class="month-control">
+                <button class="icon-button" id="prevMonth" type="button" aria-label="이전 달">‹</button>
+                <strong id="monthLabel" aria-live="polite"></strong>
+                <button class="icon-button" id="nextMonth" type="button" aria-label="다음 달">›</button>
+              </div>
+              <div id="editHint" class="task-actions">
+                <div class="action-group action-group-secondary" role="group" aria-label="업무 정리">
+                  <button id="reorderToggle" aria-pressed="false">↕ 순서 변경</button>
+                  <button id="deleteToggle">삭제</button>
+                </div>
+                <div class="action-group" role="group" aria-label="업무 작성 및 저장">
+                  <button id="newTask">＋ 새 업무</button>
+                  <button id="saveAll" disabled>저장</button>
+                </div>
+              </div>
+            </div>
             <div class="tools">
               <div>
-                <button class="active" data-tab="list">전체 목록</button
-                ><button data-tab="active">활성화</button>
-                <button data-tab="people">개인별 보기</button>
+                <button class="active" data-tab="list">전체</button>
+                <button data-tab="active">진행중</button>
+                <button data-tab="people">개인별</button>
                 <button data-tab="workers">작업자 목록</button>
               </div>
-              <span
-                ><select id="worker">
-                  <option value="all">전체 작업자</option></select
-                ><select id="status">
-                  <option value="all">전체 단계</option>
-                </select></span
-              >
+              <span><select id="worker"><option value="all">전체 작업자</option></select><select id="status"><option value="all">전체 단계</option></select></span>
             </div>
             <div id="list" class="table">
               <table>
-                <thead>
-                  <tr>
-                    <th>등록</th>
-                    <th>RMS</th>
-                    <th>작업자</th>
-                    <th>단계</th>
-                    <th>완료 &amp; 반영일</th>
-                    <th>업무제목</th>
-                    <th>비고</th>
-                    <th>실 작업시간</th>
-                    <th>조정</th>
-                  </tr>
-                </thead>
+                <colgroup>
+                  <col class="col-registration" />
+                  <col class="col-rms" />
+                  <col class="col-worker" />
+                  <col class="col-status" />
+                  <col class="col-date" />
+                  <col class="col-title" />
+                  <col class="col-notes" />
+                  <col class="col-hours" />
+                  <col class="col-adjustment" />
+                </colgroup>
+                <thead><tr>
+                  <th>등록</th><th>RMS</th><th>작업자</th><th>단계</th><th>완료 &amp; 반영일</th><th>업무제목</th><th>비고</th><th>실 작업시간</th><th>조정</th>
+                </tr></thead>
                 <tbody id="rows"></tbody>
               </table>
             </div>
             <div id="people" hidden></div>
-            <div id="workers" hidden><h3>작업자 목록</h3><div id="workerAdminList"></div></div>
-            <footer>
-              <span id="count"></span
-              ><span id="saveStatus" role="status" aria-live="polite">● Apps Script 연결 대기</span>
-            </footer>
+            <div id="workers" hidden><h3>작업자 목록</h3><div class="worker-actions"><input id="workerName" aria-label="추가할 작업자 이름" placeholder="작업자 이름" /><button id="workerAdd" type="button">추가</button><button id="workerHide" type="button">숨김</button></div><p class="worker-settings-note">작업자를 선택한 뒤 숨김을 누르세요. 숨긴 작업자는 같은 이름으로 추가하면 다시 표시됩니다. 설정은 현재 브라우저에 저장됩니다.</p><div id="workerAdminList"></div></div>
+            <footer><div class="sync-details"><span id="count"></span></div><span id="saveStatus" role="status" aria-live="polite">● Apps Script 연결 대기</span></footer>
           </article>
         </section>
       </main>
     </div>
-    <script src="config.js?v=20260919-7"></script>
-    <script src="app.js?v=20260919-7"></script>
+    <script src="config.js?v=20260919-16"></script>
+    <script src="app.js?v=20260919-16"></script>
   </body>
 </html>

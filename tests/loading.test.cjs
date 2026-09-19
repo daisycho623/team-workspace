@@ -20,6 +20,7 @@ test('new tasks stay below existing tasks after consecutive saves and reload',as
   await page.ready;
   for(const title of ['새 업무 1','새 업무 2']){
     page.run('addRow()');
+    assert.equal(page.run('selected()[0].i'),page.run('data.length-1'));
     page.run("remember(data.length-1,2,'작업자 A')");
     page.run('remember(data.length-1,5,'+JSON.stringify(title)+')');
     await page.run('saveAll()');
@@ -79,4 +80,60 @@ test('save commits focused edit and storage cleanup failure does not report remo
  let saved;const page=app(p=>{if(p.action==='save'){saved=p.tasks;return {ok:true}}return {ok:true,tasks:[task]}});await page.ready;
  page.run("document.activeElement={blur(){remember(0,5,'입력 중인 제목')}};localStorage.removeItem=()=>{throw new Error('storage blocked')}");
  await page.run('saveAll()');assert.equal(saved[0][5],'입력 중인 제목');assert.match(page.element('#saveStatus').textContent,/저장 완료/);
+});
+
+test('month navigation crosses years and save retains tasks from other months',async()=>{
+ let saved;const rows=['2026-12-15','2027-01-03'].map(date=>[date,...task.slice(1)]);
+ const page=app(p=>{if(p.action==='save'){saved=p.tasks;return {ok:true}}return {ok:true,tasks:rows}});await page.ready;
+ page.run('selectedMonth=new Date(2026,11,1);updateMonth()');
+ assert.equal(page.run('selected().length'),1);
+ page.run('changeMonth(1)');assert.equal(page.element('#monthLabel').textContent,'2027년 01월');
+ assert.equal(page.run('selected()[0].r[0]'),'2027-01-03');
+ page.run("remember(1,5,'1월 수정')");await page.run('saveAll()');
+ assert.equal(saved.length,2);assert.equal(saved[0][0],'2026-12-15');assert.equal(saved[1][5],'1월 수정');
+ page.run('changeMonth(-1)');assert.equal(page.element('#monthLabel').textContent,'2026년 12월');
+});
+test('new tasks belong to selected month with explicit year',async()=>{
+ const page=app(()=>({ok:true,tasks:[]}));await page.ready;
+ page.run('selectedMonth=new Date(2027,1,1);addRow()');
+ assert.equal(page.run('data[0][0]'),'2027-02-01');assert.equal(page.run('selected().length'),1);
+});
+
+test('multiple drafts display first but are appended on save, with failures retaining drafts',async()=>{
+ let fail=true,saved;const page=app(p=>{if(p.action==='save'){if(fail)return {ok:false,error:'실패'};saved=p.tasks;return {ok:true}}return {ok:true,tasks:[task]}});await page.ready;
+ for(const title of ['초안 A','초안 B']){page.run('addRow()');page.run("remember(data.length-1,2,'작업자 A')");page.run('remember(data.length-1,5,'+JSON.stringify(title)+')')}
+ assert.equal(page.run('selected()[0].r[5]'),'초안 B');
+ await page.run('saveAll()');assert.equal(page.run('newRows.size'),2);assert.equal(page.run('selected()[0].r[5]'),'초안 B');
+ fail=false;await page.run('saveAll()');assert.deepEqual(saved.map(r=>r[5]),['업무 제목','초안 A','초안 B']);assert.equal(page.run('selected()[0].r[5]'),'업무 제목');
+});
+
+test('new registration dates save as M/D and remain so on later saves',async()=>{
+ let saved;const page=app(p=>{if(p.action==='save'){saved=p.tasks;return {ok:true}}return {ok:true,tasks:[]}});await page.ready;
+ page.run("addRow();remember(0,0,'2026-09-19');remember(0,2,'작업자 A');remember(0,5,'새 업무')");
+ assert.doesNotMatch(page.element('#rows').innerHTML,/data-save|서버에 저장/);
+ await page.run('saveAll()');assert.equal(saved[0][0],'9/19');await page.run('saveAll()');assert.equal(saved[0][0],'9/19');
+});
+test('personal task shows all eight fields except worker',async()=>{
+ const row=['9/19','123','작업자 A','배정','2026-09-20','제목','비고 내용','1.5','조정 내용'];
+ const page=app(()=>({ok:true,tasks:[row]}));await page.ready;
+ const html=page.element('#people').innerHTML.match(/<div class="person-task">(.*?)<\/div>/)[1];
+ for(const value of row.filter((_,i)=>i!==2))assert.ok(html.includes(value));
+ assert.ok(!html.includes('작업자 A'));
+});
+
+test('refresh button fetches changed server rows and clears stale search',async()=>{
+ let tasks=[task];const page=app(()=>({ok:true,tasks}));await page.ready;
+ tasks=[[...task.slice(0,5),'서버에서 바뀐 제목',...task.slice(6)]];
+ page.element('#search').value='이전 검색어';await page.element('#refresh').onclick();
+ assert.equal(page.requests.length,2);assert.equal(page.run('data[0][5]'),'서버에서 바뀐 제목');
+ assert.equal(page.element('#search').value,'');assert.match(page.element('#saveStatus').textContent,/새로고침 완료/);
+ assert.equal(page.element('#refresh').disabled,false);
+});
+
+
+test('workers can be added, hidden and restored without changing existing assignments',async()=>{
+ const page=app(()=>({ok:true,tasks:[task]}));await page.ready;
+ page.element('#workerName').value='추가 작업자';page.run('addWorker()');assert.equal(page.run("visibleWorkers().includes('추가 작업자')"),true);
+ page.run("hideWorkers(['작업자 A'])");assert.equal(page.run("visibleWorkers().includes('작업자 A')"),false);assert.equal(page.run('data[0][2]'),'작업자 A');
+ page.element('#workerName').value='작업자 A';page.run('addWorker()');assert.equal(page.run("visibleWorkers().includes('작업자 A')"),true);
 });
