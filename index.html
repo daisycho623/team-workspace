@@ -8,16 +8,14 @@
       rel="stylesheet"
       href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css"
     />
-    <link rel="stylesheet" href="styles.css?v=20260919-4" />
+    <link rel="stylesheet" href="styles.css?v=20260919-7" />
   </head>
   <body>
     <div class="shell">
       <aside>
         <h2>▥ WORK<span>FLOW</span></h2>
         <small>WORKSPACE</small
-        ><button class="active" data-view="list">▦ 전체 목록</button
-        ><button data-view="people">▣ 개인별 보기</button>
-        <button data-view="workers">♙ 작업자 목록</button>
+        ><button class="active" data-view="list">CX</button>
         <div class="sync">
           <b>↻ Google Sheets</b><em id="sync">연결 확인 중</em>
         </div>
@@ -44,13 +42,20 @@
               <h2>CX 업무 관리</h2>
               <p id="updated"></p>
             </div>
-            <button id="newTask">＋ 새 업무</button>
+            <div id="editHint" class="task-actions">
+              <button id="newTask">＋ 새 업무</button>
+              <button id="deleteToggle">삭제</button>
+              <button id="saveAll" disabled>저장</button>
+              <button id="reorderToggle" aria-pressed="false">↕ 순서 변경</button>
+            </div>
           </div>
           <article class="panel">
             <div class="tools">
               <div>
                 <button class="active" data-tab="list">전체 목록</button
                 ><button data-tab="active">활성화</button>
+                <button data-tab="people">개인별 보기</button>
+                <button data-tab="workers">작업자 목록</button>
               </div>
               <span
                 ><select id="worker">
@@ -59,12 +64,6 @@
                   <option value="all">전체 단계</option>
                 </select></span
               >
-            </div>
-            <div id="editHint">
-              <button id="resetEdits">불러오기</button>
-              <button id="deleteToggle">선택 삭제</button>
-              <button id="saveAll" disabled>저장</button>
-              <button id="reorderToggle" aria-pressed="false">↕ 순서 변경</button>
             </div>
             <div id="list" class="table">
               <table>
@@ -94,7 +93,7 @@
         </section>
       </main>
     </div>
-    <script src="config.js?v=20260919-4"></script>
-    <script src="app.js?v=20260919-4"></script>
+    <script src="config.js?v=20260919-7"></script>
+    <script src="app.js?v=20260919-7"></script>
   </body>
 </html>

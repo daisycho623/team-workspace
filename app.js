@@ -24,7 +24,7 @@ async function requestServer(payload){
   if(!result?.ok)throw new Error(result?.error||result?.message||'Apps Script 요청에 실패했습니다.');
   return result;
 }
-function lockControls(busy){['newTask','refresh','resetEdits','saveAll','deleteToggle','reorderToggle'].forEach(id=>{const el=$('#'+id);if(el)el.disabled=busy});$('#rows').inert=busy}
+function lockControls(busy){['newTask','refresh','saveAll','deleteToggle','reorderToggle'].forEach(id=>{const el=$('#'+id);if(el)el.disabled=busy});$('#rows').inert=busy}
 async function load(){
   if(loading||saving)return;
   loading=true;lockControls(true);serverConnected=false;
@@ -34,7 +34,7 @@ async function load(){
     if(!Array.isArray(result.tasks))throw new Error('load 응답에 tasks가 없습니다. 제공하신 Apps Script 코드를 새 버전으로 배포해 주세요.');
     const rows=result.tasks.map(normalize);
     data=rows;newRows.clear();edits={};deleteMode=false;
-    $('#deleteToggle').textContent='선택 삭제';
+    $('#deleteToggle').textContent='삭제';
     workers=[...new Set([...(window.WORKERS||[]),...(Array.isArray(result.workers)?result.workers:[]),...data.map(r=>r[2])].filter(Boolean))];
     serverConnected=true;renderWorkerAdmin();filters();render();
     $('#sync').textContent='Apps Script 연결됨';
@@ -60,7 +60,7 @@ async function saveAll(){
     $('#saveStatus').textContent='● Apps Script 저장 완료';
     $('#updated').textContent=result.updatedAt?'서버 최종 저장: '+result.updatedAt:'서버에 저장했습니다.';
     render();
-  }catch(error){const reason=error.name==='TimeoutError'?'서버 응답 시간이 초과되었습니다. 불러오기로 저장 여부를 확인해 주세요.':error.message;$('#saveStatus').textContent='● 저장 실패: '+reason}
+  }catch(error){const reason=error.name==='TimeoutError'?'서버 응답 시간이 초과되었습니다. 새로고침 후 저장 여부를 확인해 주세요.':error.message;$('#saveStatus').textContent='● 저장 실패: '+reason}
   finally{saving=false;lockControls(false)}
 }
 function filters(){$('#worker').innerHTML='<option value="all">전체 작업자</option>'+workers.map(x=>`<option>${esc(x)}</option>`).join('');$('#status').innerHTML='<option value="all">전체 단계</option>'+statuses.map(x=>`<option>${esc(x)}</option>`).join('')}
@@ -76,13 +76,13 @@ function addRow(){let d=new Date();data.push([`${d.getMonth()+1}/${d.getDate()}`
 async function saveRow(){await saveAll()}
 function monthOf(v){let m=String(v).match(/(?:\d{2,4}[.\/-])?(\d{1,2})[.\/-]\d{1,2}/);return m?`${+m[1]}월`:'기타'}
 function people(rows){$('#people').innerHTML=workers.map(n=>{let own=rows.filter(r=>r[2]===n);if(!own.length)return '';let total=own.reduce((s,r)=>s+(+r[9]||0),0),months={};own.forEach(r=>(months[monthOf(r[0])]??=[]).push(r));let groups=Object.entries(months).map(([m,list])=>`<div class="person-month"><div class="month-row">${m}</div>${list.map(r=>`<div class="person-task"><span>${esc(r[0])}</span><span class="rms">${esc(r[1])}</span><span><b class="mini-status ${statusClass(r[3])}">${esc(r[3])}</b></span><span>${esc(r[4])}</span><strong>${esc(r[5])}</strong><span>${esc(r[9]||'')}</span></div>`).join('')}</div>`).join('');return `<section class="person-section"><div class="person-header"><b>${esc(n)}</b><strong>${total}</strong></div>${groups}</section>`}).join('')}
-function deleteSelected(){let ids=$$('.row-check:checked').map(x=>+x.dataset.check);if(!ids.length){alert('삭제할 업무를 선택해 주세요.');return}if(!confirm(`${ids.length}개의 업무를 목록에서 제외하시겠습니까? 변경사항 저장 시 서버에 반영됩니다.`))return;ids.sort((a,b)=>b-a).forEach(i=>data.splice(i,1));newRows.clear();deleteMode=false;$('#deleteToggle').textContent='선택 삭제';$('#saveStatus').textContent='● 삭제를 반영하려면 변경사항 저장을 눌러 주세요';render()}
+function deleteSelected(){let ids=$$('.row-check:checked').map(x=>+x.dataset.check);if(!ids.length){alert('삭제할 업무를 선택해 주세요.');return}if(!confirm(`${ids.length}개의 업무를 목록에서 제외하시겠습니까? 변경사항 저장 시 서버에 반영됩니다.`))return;ids.sort((a,b)=>b-a).forEach(i=>data.splice(i,1));newRows.clear();deleteMode=false;$('#deleteToggle').textContent='삭제';$('#saveStatus').textContent='● 삭제를 반영하려면 변경사항 저장을 눌러 주세요';render()}
 
 function showView(view){
  currentView=view;reorderMode=false;
- $$('aside [data-view]').forEach(b=>b.classList.toggle('active',b.dataset.view===view));
+ $$('aside [data-view]').forEach(b=>b.classList.toggle('active',true));
  $('#list').hidden=view!=='list';$('#people').hidden=view!=='people';$('#workers').hidden=view!=='workers';
- $('.tools').hidden=view==='workers';$('#editHint').hidden=view!=='list';$('#newTask').hidden=view!=='list';
+ $('.tools').hidden=false;$('.tools > span').hidden=view==='workers';$('#editHint').hidden=view!=='list';$('#newTask').hidden=view!=='list';
  updateReorder();render();
 }
 function updateReorder(){
@@ -109,15 +109,20 @@ function bindReorder(){
  row.ondrop=e=>{e.preventDefault();row.classList.remove('drop-target');if(draggedRow!==null)moveRow(draggedRow,+row.dataset.index);draggedRow=null};
  });
 }
-$$('aside [data-view]').forEach(b=>b.onclick=()=>showView(b.dataset.view));
-$$('[data-tab]').forEach(b=>b.onclick=()=>{currentTab=b.dataset.tab;reorderMode=false;$$('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));updateReorder();render()});
-$('#reorderToggle').onclick=()=>{reorderMode=!reorderMode;deleteMode=false;$('#deleteToggle').textContent='선택 삭제';updateReorder();render()};
+function selectTab(tab){
+ currentTab=tab;
+ $$('[data-tab]').forEach(b=>b.classList.toggle('active',b.dataset.tab===tab));
+ showView(['people','workers'].includes(tab)?tab:'list');
+}
+$$('aside [data-view]').forEach(b=>b.onclick=()=>selectTab('list'));
+$$('[data-tab]').forEach(b=>b.onclick=()=>selectTab(b.dataset.tab));
+$('#reorderToggle').onclick=()=>{reorderMode=!reorderMode;deleteMode=false;$('#deleteToggle').textContent='삭제';updateReorder();render()};
 ['search','worker','status'].forEach(x=>$('#'+x).addEventListener(x==='search'?'input':'change',render));
 $('#newTask').onclick=addRow;
 $('#saveAll').onclick=saveAll;
 function updateDeleteButton(){
   const count=$$('.row-check:checked').length;
-  $('#deleteToggle').textContent=deleteMode?(count?'선택 항목 삭제 ('+count+')':'삭제 취소'):'선택 삭제';
+  $('#deleteToggle').textContent=deleteMode?(count?'삭제 ('+count+')':'삭제 취소'):'삭제';
 }
 $('#deleteToggle').onclick=()=>{
   if(deleteMode&&$$('.row-check:checked').length){deleteSelected();return}
@@ -125,5 +130,4 @@ $('#deleteToggle').onclick=()=>{
 };
 
 $('#refresh').onclick=load;
-$('#resetEdits').onclick=()=>{try{localStorage.removeItem(KEY)}catch{}edits={};load()};
 load();

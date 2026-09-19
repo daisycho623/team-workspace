@@ -207,11 +207,11 @@ select {
   color: #59635e;
 }
 .table {
-  overflow: auto;
+  width: 100%;
 }
 table {
   width: 100%;
-  min-width: 1120px;
+  table-layout: fixed;
   border-collapse: collapse;
 }
 th {
@@ -292,10 +292,8 @@ tbody tr:hover {
 .task {
   font-weight: bold;
   color: #17201c;
-  min-width: 330px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
 }
 footer {
   display: flex;
@@ -413,22 +411,25 @@ footer span:last-child {
 }
 #editHint {
   display: flex;
-  gap: 12px;
-  padding: 9px 20px;
-  background: #f4f8f1;
-  border-bottom: 1px solid var(--line);
-  color: #627168;
-  font-size: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
 }
 #editHint button {
   border: 0;
-  padding: 7px;
+  padding: 11px 14px;
   background: #2c6e58;
-  border-radius: 7px;
+  border-radius: 9px;
   color: #fff;
+  font: inherit;
+  font-size: 12px;
   font-weight: 600;
   cursor: pointer;
 }
+#editHint #newTask { background: var(--g); }
+#editHint button:disabled { opacity: 0.5; cursor: default; }
+.intro { gap: 16px; flex-wrap: wrap; }
 .locked {
   background: #fafbfa !important;
   color: #89928d;
@@ -454,13 +455,11 @@ footer span:last-child {
   text-decoration: underline;
   font-weight: bold;
 }
-.table td:nth-child(7) {
-  min-width: 280px;
-}
+
 .table td:nth-child(8),
 .table td:nth-child(9) {
   text-align: center;
-  min-width: 80px;
+  min-width: 0;
 }
 @keyframes saved {
   50% {
@@ -507,7 +506,7 @@ footer span:last-child {
 }
 .cell-select {
   width: 100%;
-  min-width: 92px;
+  min-width: 0;
   margin: 0;
   border: 1px solid transparent;
   border-radius: 7px;
@@ -627,7 +626,7 @@ footer span:last-child {
   display: block !important;
 }
 .rms-cell {
-  min-width: 105px;
+  min-width: 0;
   white-space: nowrap;
 }
 .rms-input {
@@ -656,7 +655,7 @@ footer span:last-child {
   font-weight: 700;
 }
 .date-cell {
-  min-width: 142px;
+  min-width: 0;
   padding: 7px 8px !important;
 }
 .date-input {
@@ -782,3 +781,21 @@ footer span:last-child {
 .drag-handle:active { cursor: grabbing; }
 .drop-target { outline: 2px solid #81ac43; outline-offset: -2px; }
 #reorderToggle[aria-pressed="true"] { background: #546b2b; }
+
+/* Wrap long task content within the available table width. */
+.table th, .table td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+  vertical-align: middle;
+  padding: 10px 6px;
+}
+.table [contenteditable] { white-space: pre-wrap; }
+.table th:nth-child(1), .table th:nth-child(2) { width: 8%; }
+.table th:nth-child(3), .table th:nth-child(4) { width: 10%; }
+.table th:nth-child(5) { width: 13%; }
+.table th:nth-child(6) { width: 23%; }
+.table th:nth-child(7) { width: 16%; }
+.table th:nth-child(8), .table th:nth-child(9) { width: 6%; }
+.table input, .table select { min-width: 0; max-width: 100%; }
+.table .rms-input { width: 100%; }
+.table .save-row { white-space: normal; max-width: 100%; }
