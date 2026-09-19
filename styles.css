@@ -412,6 +412,8 @@ footer span:last-child {
   }
 }
 #editHint {
+  display: flex;
+  gap: 12px;
   padding: 9px 20px;
   background: #f4f8f1;
   border-bottom: 1px solid var(--line);
@@ -419,13 +421,13 @@ footer span:last-child {
   font-size: 10px;
 }
 #editHint button {
-  float: right;
   border: 0;
-  background: none;
-  color: #2c6e58;
-  font: 600 10px inherit;
+  padding: 7px;
+  background: #2c6e58;
+  border-radius: 7px;
+  color: #fff;
+  font-weight: 600;
   cursor: pointer;
-  text-decoration: underline;
 }
 .locked {
   background: #fafbfa !important;
@@ -552,14 +554,6 @@ footer span:last-child {
 .status-select.status-assigned {
   background: #d6edba;
   color: #2d5016;
-}
-#deleteToggle,
-#deleteSelected {
-  margin-left: 12px !important;
-  float: none !important;
-  border-radius: 6px !important;
-  padding: 4px 8px !important;
-  text-decoration: none !important;
 }
 #deleteSelected {
   background: #a90000 !important;
