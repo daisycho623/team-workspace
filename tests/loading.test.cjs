@@ -5,7 +5,7 @@ const vm=require('node:vm');
 const source=fs.readFileSync(require('node:path').join(__dirname,'../app.js'),'utf8');
 function app(handler){
   const elements=new Map(),requests=[];
-  const element=id=>{if(!elements.has(id))elements.set(id,{value:['#worker','#status'].includes(id)?'all':'',innerHTML:'',textContent:'',addEventListener(){},focus(){}});return elements.get(id)};
+  const element=id=>{if(!elements.has(id))elements.set(id,{value:['#worker','#status'].includes(id)?'all':'',innerHTML:'',textContent:'',addEventListener(){},setAttribute(){},focus(){}});return elements.get(id)};
   const context=vm.createContext({window:{APPS_SCRIPT_URL:'https://example.test/exec',WORKERS:['작업자 A']},AbortSignal,console,
     fetch:async(url,options)=>{const payload=JSON.parse(options.body);requests.push({url,payload,headers:options.headers});return {ok:true,json:async()=>handler(payload)}},
     localStorage:{getItem:()=>null,setItem(){},removeItem(){}},alert(){},confirm:()=>true,requestAnimationFrame:fn=>fn(),setTimeout,
@@ -53,4 +53,30 @@ test('empty server keeps worker choices and supports explicit save of an empty l
 test('save failure retains unsaved rows and reports the server error',async()=>{
   const page=app(p=>p.action==='load'?{ok:true,tasks:[task]}:{ok:false,error:'셀 저장 한도 초과'});await page.ready;
   page.run('newRows.add(0)');await page.run('saveAll()');assert.equal(page.run('newRows.size'),1);assert.match(page.element('#saveStatus').textContent,/셀 저장 한도 초과/);
+});
+
+test('active tab excludes completed, held and carried-over tasks',async()=>{
+ const tasks=['배정','진행','내부검수','검수요청','반영대기','완료','보류','이월'].map(stage=>{const row=[...task];row[3]=stage;return row});
+ const page=app(()=>({ok:true,tasks}));await page.ready;
+ page.run("currentTab='active'");assert.equal(page.run('selected().length'),5);
+ page.element('#worker').value='다른 작업자';assert.equal(page.run('selected().length'),0);
+ page.element('#worker').value='all';page.run("currentTab='list'");assert.equal(page.run('selected().length'),8);
+});
+test('reordering preserves unsaved row identity and persisted order',async()=>{
+ let tasks=[task,[...task.slice(0,5),'두번째',...task.slice(6)]];
+ const page=app(p=>{if(p.action==='save'){tasks=p.tasks;return {ok:true}}return {ok:true,tasks}});await page.ready;
+ page.run('newRows.add(0);reorderMode=true;moveRow(0,1)');
+ assert.equal(page.run('newRows.has(1)'),true);
+ await page.run('saveAll()');await page.run('load()');
+ assert.equal(page.run('data[0][5]'),'두번째');assert.equal(page.run('data[1][5]'),'업무 제목');
+});
+test('worker directory opens separately from table and people views',async()=>{
+ const page=app(()=>({ok:true,tasks:[task]}));await page.ready;
+ page.run("showView('workers')");assert.equal(page.element('#workers').hidden,false);assert.equal(page.element('#list').hidden,true);
+ page.run("showView('list')");assert.equal(page.element('#workers').hidden,true);assert.equal(page.element('#list').hidden,false);
+});
+test('save commits focused edit and storage cleanup failure does not report remote save failure',async()=>{
+ let saved;const page=app(p=>{if(p.action==='save'){saved=p.tasks;return {ok:true}}return {ok:true,tasks:[task]}});await page.ready;
+ page.run("document.activeElement={blur(){remember(0,5,'입력 중인 제목')}};localStorage.removeItem=()=>{throw new Error('storage blocked')}");
+ await page.run('saveAll()');assert.equal(saved[0][5],'입력 중인 제목');assert.match(page.element('#saveStatus').textContent,/저장 완료/);
 });

@@ -555,7 +555,7 @@ footer span:last-child {
   background: #d6edba;
   color: #2d5016;
 }
-#deleteSelected {
+#deleteToggle {
   background: #a90000 !important;
   color: #fff !important;
 }
@@ -774,3 +774,11 @@ footer span:last-child {
 .table input[type="date"]::-webkit-datetime-edit {
   font: inherit;
 }
+
+[hidden] { display: none !important; }
+#workers { padding: 24px; }
+#workers .worker-admin-item { color: #334039; background: #f5f7f4; padding: 12px; font-size: 14px; }
+.drag-handle { cursor: grab; border: 1px solid #b8c8bf; border-radius: 5px; background: white; color: #143f32; margin-right: 6px; padding: 4px 8px; }
+.drag-handle:active { cursor: grabbing; }
+.drop-target { outline: 2px solid #81ac43; outline-offset: -2px; }
+#reorderToggle[aria-pressed="true"] { background: #546b2b; }
